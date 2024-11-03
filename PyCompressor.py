@@ -1,38 +1,118 @@
 import os
 import subprocess
-
-# Set the directory containing MP3 files and the output RAR file
-# Update these paths as needed
-mp3_folder = r"Your\Path\To\MP3_Folder"
-output_rar = r"Your\Path\To\Output\Archive.rar"
-
-# Collect all .mp3 files in the specified directory
-mp3_files = [os.path.join(mp3_folder, file) for file in os.listdir(mp3_folder) if file.endswith('.mp3')]
+import zipfile
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
 
-def create_rar_archive(mp3_folder, output_rar):
-    """
-    Creates a RAR archive containing all .mp3 files in the specified folder.
+def collect_files(folders, extensions):
+    collected_files = []
+    for folder in folders:
+        for file in os.listdir(folder):
+            if any(file.endswith(ext) for ext in extensions):
+                collected_files.append(os.path.join(folder, file))
+    return collected_files
 
-    Parameters:
-    mp3_folder (str): Path to the folder containing .mp3 files.
-    output_rar (str): Path where the .rar file will be saved.
-    """
-    # Replace with the full path to WinRAR.exe if it's not in your system PATH
-    command = [r"C:\Program Files\WinRAR\WinRAR.exe", "a", "-r", output_rar, os.path.join(mp3_folder, "*.mp3")]
 
+def create_zip_archive(files, output_zip):
+    with zipfile.ZipFile(output_zip, 'w') as zipf:
+        for file in files:
+            zipf.write(file, arcname=os.path.basename(file))
+    messagebox.showinfo("Success", f"Created ZIP archive at {output_zip}")
+
+
+def create_rar_archive(files, output_rar):
+    command = ["C:\\Program Files\\WinRAR\\WinRAR.exe", "a", "-r", output_rar] + files
     try:
-        # Run the WinRAR command and create the archive
         subprocess.run(command, check=True)
-        print(f"Created RAR archive at {output_rar}")
+        messagebox.showinfo("Success", f"Created RAR archive at {output_rar}")
     except subprocess.CalledProcessError as e:
-        print(f"An error occurred while creating the archive: {e}")
+        messagebox.showerror("Error", f"An error occurred while creating the RAR archive: {e}")
     except FileNotFoundError:
-        print("WinRAR not found. Please ensure WinRAR is installed and added to your PATH.")
+        messagebox.showerror("Error", "WinRAR not found. Please ensure WinRAR is installed and in your PATH.")
 
 
-if __name__ == "__main__":
-    if mp3_files:
-        create_rar_archive(mp3_folder, output_rar)
-    else:
-        print("No MP3 files found in the specified directory.")
+def start_compression():
+    format_choice = compression_format.get()
+    if format_choice not in {'zip', 'rar'}:
+        messagebox.showwarning("Warning", "Please select a compression format.")
+        return
+
+    # Collect folders and file types
+    extensions = file_types_entry.get().split(',')
+    extensions = [ext.strip() for ext in extensions if ext.strip()]
+    if not extensions:
+        messagebox.showwarning("Warning", "Please enter at least one file type.")
+        return
+
+    files_to_compress = collect_files(selected_folders, extensions)
+    if not files_to_compress:
+        messagebox.showwarning("Warning", "No files found with the specified file types.")
+        return
+
+    output_file = filedialog.asksaveasfilename(defaultextension=f".{format_choice}",
+                                               filetypes=[("RAR files", "*.rar"), ("ZIP files", "*.zip")])
+    if not output_file:
+        return
+
+    if format_choice == 'zip':
+        create_zip_archive(files_to_compress, output_file)
+    elif format_choice == 'rar':
+        create_rar_archive(files_to_compress, output_file)
+
+
+def add_folder():
+    folder = filedialog.askdirectory()
+    if folder:
+        selected_folders.append(folder)
+        folders_listbox.insert(tk.END, folder)
+
+
+def clear_folders():
+    selected_folders.clear()
+    folders_listbox.delete(0, tk.END)
+
+
+def reset_app():
+    compression_format.set('')
+    file_types_entry.delete(0, tk.END)
+    clear_folders()
+
+
+# Initialize main window
+root = tk.Tk()
+root.title("File Compressor")
+root.geometry("500x400")
+
+selected_folders = []
+
+# Compression format selection
+tk.Label(root, text="Choose Compression Format:").pack(pady=5)
+compression_format = tk.StringVar()
+tk.Radiobutton(root, text="ZIP", variable=compression_format, value="zip").pack()
+tk.Radiobutton(root, text="RAR", variable=compression_format, value="rar").pack()
+
+# File type input
+tk.Label(root, text="Enter File Types to Include (e.g., .mp3, .txt):").pack(pady=5)
+file_types_entry = tk.Entry(root, width=50)
+file_types_entry.pack()
+
+# Folder selection
+tk.Label(root, text="Selected Folders:").pack(pady=5)
+folders_listbox = tk.Listbox(root, width=50, height=6)
+folders_listbox.pack()
+
+# Folder buttons
+folder_buttons_frame = tk.Frame(root)
+folder_buttons_frame.pack(pady=5)
+tk.Button(folder_buttons_frame, text="Add Folder", command=add_folder).grid(row=0, column=0, padx=5)
+tk.Button(folder_buttons_frame, text="Clear Folders", command=clear_folders).grid(row=0, column=1, padx=5)
+
+# Start and Reset buttons
+buttons_frame = tk.Frame(root)
+buttons_frame.pack(pady=10)
+tk.Button(buttons_frame, text="Start Compression", command=start_compression).grid(row=0, column=0, padx=5)
+tk.Button(buttons_frame, text="Reset", command=reset_app).grid(row=0, column=1, padx=5)
+
+# Run the application
+root.mainloop()
