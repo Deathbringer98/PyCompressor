@@ -2,7 +2,7 @@ PyCompressor
 Description:
 PyCompressor allows you to easily compress files from multiple folders into a single .rar or .zip file. The program provides a graphical interface (GUI) for selecting folders, file types, and output formats.
 
-Instructions
+Instructions to
 Run the Program:
 
 1. Start the program by running pycompactor.py. A GUI window will open.
